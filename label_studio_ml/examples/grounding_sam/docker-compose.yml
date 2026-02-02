@@ -16,32 +16,34 @@ services:
 #          memory: 16G
     environment:
       - MODEL_DIR=/data/models
-      - WORKERS=2
+      - WORKERS=1
       - THREADS=4
       - LOG_LEVEL=DEBUG
 
       # Add these variables if you want to access the images stored in Label Studio
-      - LABEL_STUDIO_HOST=
-      - LABEL_STUDIO_ACCESS_TOKEN=
-
+      - LABEL_STUDIO_HOST=http://10.242.240.62:18080
+      - LABEL_STUDIO_ACCESS_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6ODA3Njk5NjI2MiwiaWF0IjoxNzY5Nzk2MjYyLCJqdGkiOiJjNDAyZTZkN2Q4NWQ0YjI2ODFmZmYzNjhiZjUxOGM4OSIsInVzZXJfaWQiOiIxIn0.1qBpJk92hCQn15YPyYfHI8Z26QNcVWQJjYpImrh3zF4
+      - LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/label-studio/files
+      
       # use these if you want to use segment anything instead of bounding box predictions from input text prompts
       - USE_SAM=false  # if you want to automatically generate segment anything model predictions
       - USE_MOBILE_SAM=false # whether you want to use a more efficient, yet a bit less accurate, version of the segment anything model
 
       - BOX_THRESHOLD=0.30
       - TEXT_THRESHOLD=0.25
-# # Uncomment the following lines if you want to use GPU
-#      - NVIDIA_VISIBLE_DEVICES=all
-#    deploy:
-#      resources:
-#        reservations:
-#          devices:
-#            - driver: nvidia
-#              count: 1
-#              capabilities: [gpu]
+  # Uncomment the following lines if you want to use GPU
+      - NVIDIA_VISIBLE_DEVICES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     ports:
       - "9090:9090"
     volumes:
       - "./data/ml-backend:/data"
       - "./prompt.txt:/app/prompt.txt"
       - ./dino.py:/app/dino.py
+      - /media/disk/object_detection_dataset:/label-studio/files:rw

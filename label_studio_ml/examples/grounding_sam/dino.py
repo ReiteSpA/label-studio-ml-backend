@@ -362,15 +362,15 @@ class DINOBackend(LabelStudioMLBase):
                 'id': label_id,
                 'from_name': from_name_r,
                 'to_name': to_name_r,
-                'original_width': width,
-                'original_height': height,
+                'original_width': float(width),
+                'original_height': float(height),
                 'image_rotation': 0,
                 'value': {
                     'rotation': 0,
-                    'width': (points[2] - points[0]) / width * 100,
-                    'height': (points[3] - points[1]) / height * 100,
-                    'x': points[0] / width * 100,
-                    'y': points[1] / height * 100
+                    'width': float((points[2] - points[0]) / width * 100),
+                    'height': float((points[3] - points[1]) / height * 100),
+                    'x': float(points[0] / width * 100),
+                    'y': float(points[1] / height * 100)
                 },
                 'score': score,
                 'type': 'rectanglelabels',
@@ -431,8 +431,8 @@ class DINOBackend(LabelStudioMLBase):
                 'id': label_id,
                 'from_name': from_name_b,
                 'to_name': to_name_b,
-                'original_width': width,
-                'original_height': height,
+                'original_width': float(width),
+                'original_height': float(height),
                 'image_rotation': 0,
                 'value': {
                     'format': 'rle',

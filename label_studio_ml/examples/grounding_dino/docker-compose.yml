@@ -21,20 +21,20 @@ services:
       - LOG_LEVEL=DEBUG
 
       # Add these variables if you want to access the images stored in Label Studio
-      - LABEL_STUDIO_HOST=https://app.heartex.com/
-      - LABEL_STUDIO_ACCESS_TOKEN=your_access_token
+      - LABEL_STUDIO_HOST=http://10.242.240.62:18080
+      - LABEL_STUDIO_ACCESS_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6ODA3Njk3NTk5MCwiaWF0IjoxNzY5Nzc1OTkwLCJqdGkiOiIwMjA3OTI4OGFkNTY0MGE1OTRlMmY0YjliZDhjNGJhNiIsInVzZXJfaWQiOiIxIn0.i_1J7IEPjb07OylS8fOR62moRdMVSYM0_aI9nCjGVnU
 
       - BOX_THRESHOLD=0.30
       - TEXT_THRESHOLD=0.25
   # Uncomment the following lines if you want to use GPU
-#      - NVIDIA_VISIBLE_DEVICES=all
-#    deploy:
-#      resources:
-#        reservations:
-#          devices:
-#            - driver: nvidia
-#              count: 1
-#              capabilities: [gpu]
+    #   - NVIDIA_VISIBLE_DEVICES=all
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
     ports:
       - "9090:9090"
     volumes:
