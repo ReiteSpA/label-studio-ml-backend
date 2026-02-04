@@ -5,6 +5,8 @@ ARG TEST_ENV
 WORKDIR /app
 
 RUN conda update conda -y
+# Fix GLIBCXX_3.4.29 for Pillow/libLerc (add this line)
+RUN conda install -y -c conda-forge libstdcxx-ng
 
 RUN --mount=type=cache,target="/var/cache/apt",sharing=locked \
     --mount=type=cache,target="/var/lib/apt/lists",sharing=locked \
@@ -48,6 +50,10 @@ RUN cd checkpoints && ./download_ckpts.sh
 
 WORKDIR /app
 
+# Fix Pillow GLIBCXX issue: replace conda Pillow with pip version
+RUN pip uninstall -y pillow || true && \
+    pip install --no-cache-dir pillow
+
 # install test requirements if needed
 COPY requirements-test.txt .
 # build only when TEST_ENV="true"
@@ -59,3 +65,4 @@ RUN --mount=type=cache,target=${PIP_CACHE_DIR},sharing=locked \
 COPY . ./
 
 CMD ["/app/start.sh"]
+

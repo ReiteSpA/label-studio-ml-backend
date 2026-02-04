@@ -22,7 +22,7 @@ services:
 
       # Add these variables if you want to access the images stored in Label Studio
       - LABEL_STUDIO_HOST=http://10.242.240.62:18080
-      - LABEL_STUDIO_ACCESS_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6ODA3Njk5NjI2MiwiaWF0IjoxNzY5Nzk2MjYyLCJqdGkiOiJjNDAyZTZkN2Q4NWQ0YjI2ODFmZmYzNjhiZjUxOGM4OSIsInVzZXJfaWQiOiIxIn0.1qBpJk92hCQn15YPyYfHI8Z26QNcVWQJjYpImrh3zF4
+      - LABEL_STUDIO_ACCESS_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6ODA3NzM1MDMwMywiaWF0IjoxNzcwMTUwMzAzLCJqdGkiOiIxYTZmMGUwNjRkMGI0N2FlODQ5OTZkMDE3NzY4NzI4NCIsInVzZXJfaWQiOiIxIn0.KrFEiUL6WqlJxTxcZxjTteThLlFHnHMq3Rfhv5hv1U0
       - LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/label-studio/files
       
       # use these if you want to use segment anything instead of bounding box predictions from input text prompts
@@ -46,4 +46,4 @@ services:
       - "./data/ml-backend:/data"
       - "./prompt.txt:/app/prompt.txt"
       - ./dino.py:/app/dino.py
-      - /media/disk/object_detection_dataset:/label-studio/files:rw
+      - /media/disk/object_detection/datasets:/label-studio/files:rw

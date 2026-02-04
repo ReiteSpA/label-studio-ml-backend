@@ -24,18 +24,29 @@ services:
       # specify device
       - DEVICE=cuda  # or 'cpu' (coming soon)
       # SAM2 model config
-      - MODEL_CONFIG=sam2_hiera_l.yaml
+      - MODEL_CONFIG=configs/sam2.1/sam2.1_hiera_b+.yaml
       # SAM2 checkpoint
-      - MODEL_CHECKPOINT=sam2_hiera_large.pt
+      - MODEL_CHECKPOINT=sam2.1_hiera_base_plus.pt
 
       # Specify the Label Studio URL and API key to access
       # uploaded, local storage and cloud storage files.
       # Do not use 'localhost' as it does not work within Docker containers.
       # Use prefix 'http://' or 'https://' for the URL always.
       # Determine the actual IP using 'ifconfig' (Linux/Mac) or 'ipconfig' (Windows).
-      - LABEL_STUDIO_URL=
-      - LABEL_STUDIO_API_KEY=
+      - LABEL_STUDIO_HOST=http://10.242.240.62:18080
+      - LABEL_STUDIO_ACCESS_TOKEN=3191d1fdb0d63db0fb11a8e88a22e4c968e8baa6
+      - LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/label-studio/files
+      - NVIDIA_VISIBLE_DEVICES=all
+      - MAX_FRAMES_TO_TRACK=100
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     ports:
-      - "9090:9090"
+      - "9092:9090"
     volumes:
       - "./data/server:/data"
+      - /media/disk/object_detection/datasets:/label-studio/files:rw
