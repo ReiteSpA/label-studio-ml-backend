@@ -64,5 +64,7 @@ RUN --mount=type=cache,target=${PIP_CACHE_DIR},sharing=locked \
 
 COPY . ./
 
+RUN pip install matplotlib
+
 CMD ["/app/start.sh"]
 

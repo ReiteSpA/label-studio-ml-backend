@@ -55,12 +55,11 @@ def get_inference_state(video_dir):
     return _inference_state
 
 # Define the model class
-class NewModel(LabelStudioMLBase):
-    """Custom ML Backend model
-    """
+class SegmentAnything2VideoModel(LabelStudioMLBase):
+    """Custom ML Backend model for Segment Anything 2 with videos"""
     # Split the video into frames
-    def split_frames(self, video_path, temp_dir, start_frame=0, end_frame=100):
-        # Open the video file and check if it is loaded correctly
+    def split_frames(self, video_path, temp_dir, start_frame, end_frame):
+        # Open the video file
         logger.debug(f'Opening video file: {video_path}')
         video = cv2.VideoCapture(video_path)
 
@@ -78,7 +77,7 @@ class NewModel(LabelStudioMLBase):
         frame_count = 0
         # Loop through the frames
         while True:
-            # Read a frame from the video
+            # Read a frame from the video file
             success, frame = video.read()
             # Skip frames before the start frame
             if frame_count < start_frame:
@@ -86,7 +85,7 @@ class NewModel(LabelStudioMLBase):
                 frame_count += 1
                 continue
             # Stop at the end frame
-            if frame_count >= end_frame:
+            if frame_count > end_frame:
                 logger.debug(f'Stopping at frame {frame_count}')
                 break
 
@@ -134,6 +133,11 @@ class NewModel(LabelStudioMLBase):
                 box_width = obj['width'] / 100
                 box_height = obj['height'] / 100
                 frame_idx = obj['frame'] - 1
+                
+                xmin = x
+                ymin = y
+                xmax = x + box_width
+                ymax = y + box_height
 
                 # SAM2 video works with keypoints - convert the rectangle to the set of keypoints within the rectangle
                 # bbox (x, y) is top-left corner
@@ -150,13 +154,16 @@ class NewModel(LabelStudioMLBase):
                     [x + box_width / 2, y + 3 * box_height / 4]
                 ]
 
+                bbox = [xmin, ymin, xmax, ymax]
+
                 points = np.array(kps, dtype=np.float32)
                 labels = np.array([1] * len(kps), dtype=np.int32)
                 prompts.append({
                     'points': points,
                     'labels': labels,
                     'frame_idx': frame_idx,
-                    'obj_id': obj_id
+                    'obj_id': obj_id,
+                    'bbox': bbox
                 })
         return prompts
 
@@ -258,10 +265,22 @@ class NewModel(LabelStudioMLBase):
         mask_image = (mask_image * 255).astype(np.uint8)
         mask_image = cv2.cvtColor(mask_image, cv2.COLOR_BGRA2BGR)
         mask_image = cv2.addWeighted(frame, 1.0, mask_image, 0.8, 0)
-        logger.debug(f'Shapes: frame={frame.shape}, mask={mask.shape}, mask_image={mask_image.shape}')
+        #logger.debug(f'Shapes: frame={frame.shape}, mask={mask.shape}, mask_image={mask_image.shape}')
         # save in file
-        logger.debug(f'Saving image with mask to {output_file}')
+        #logger.debug(f'Saving image with mask to {output_file}')
         cv2.imwrite(output_file, mask_image)
+
+    def dumped_images_to_video(self, debug_dir):
+        # get all images in the debug directory
+        images = [f for f in os.listdir(debug_dir) if f.endswith('.jpg')]
+        # sort images by name
+        images.sort()
+        # create a video from the images
+        video = cv2.VideoWriter(debug_dir + '/video.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 30, (640, 480))
+        for image in images:
+            video.write(cv2.imread(os.path.join(debug_dir, image)))
+        # release the video writer
+        video.release()
 
 
     def predict(self, tasks: List[Dict], context: Optional[Dict] = None, **kwargs) -> ModelResponse:
@@ -294,17 +313,16 @@ class NewModel(LabelStudioMLBase):
         obj_ids = {obj_id: i for i, obj_id in enumerate(all_obj_ids)}
         # find the last frame index
         first_frame_idx = min(p['frame_idx'] for p in prompts) if prompts else 0
-        last_frame_idx = max(p['frame_idx'] for p in prompts) if prompts else 0
         frames_count, duration = self._get_fps(context, task, video_path)
         fps = frames_count / duration if duration > 0 else 30  # default fps fallback
+        frames_to_track = MAX_FRAMES_TO_TRACK
 
         logger.debug(
             f'Number of prompts: {len(prompts)}, '
             f'first frame index: {first_frame_idx}, '
-            f'last frame index: {last_frame_idx}, '
-            f'obj_ids: {obj_ids}')
-
-        frames_to_track = MAX_FRAMES_TO_TRACK
+            f'obj_ids: {obj_ids}',
+            f'fps: {fps}',
+            f'frames to track: {frames_to_track}')
 
         # Split the video into frames
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -317,7 +335,7 @@ class NewModel(LabelStudioMLBase):
             frames = list(self.split_frames(
                 video_path, temp_dir,
                 start_frame=first_frame_idx,
-                end_frame=last_frame_idx + frames_to_track + 1
+                end_frame=first_frame_idx + frames_to_track + 1
             ))
             height, width, _ = frames[0][1].shape
             logger.debug(f'Video width={width}, height={height}')
@@ -328,26 +346,38 @@ class NewModel(LabelStudioMLBase):
 
             for prompt in prompts:
                 # multiply points by the frame size
-                prompt['points'][:, 0] *= width
-                prompt['points'][:, 1] *= height
+                if 'bbox' in prompt:
+                    logger.debug(f"Adding new box: {prompt['bbox']}")
+                    prompt['bbox'] = [prompt['bbox'][0] * width, prompt['bbox'][1] * height, prompt['bbox'][2] * width, prompt['bbox'][3] * height]
+                    _, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
+                        inference_state=inference_state,
+                        frame_idx=prompt['frame_idx']- first_frame_idx, 
+                        obj_id=obj_ids[prompt['obj_id']],
+                        box=prompt['bbox']
+                    )
+                # If there are points, add them to the predictor
+                if 'points' in prompt:
+                    logger.debug(f"Adding new points: {prompt['points']}")
+                    prompt['points'][:, 0] *= width
+                    prompt['points'][:, 1] *= height
 
-                _, out_obj_ids, out_mask_logits = predictor.add_new_points(
-                    inference_state=inference_state,
-                    frame_idx=prompt['frame_idx']-first_frame_idx,
-                    obj_id=obj_ids[prompt['obj_id']],
-                    points=prompt['points'],
-                    labels=prompt['labels']
-                )
+                    _, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
+                        inference_state=inference_state,
+                        frame_idx=prompt['frame_idx']-first_frame_idx,
+                        obj_id=obj_ids[prompt['obj_id']],
+                        points=prompt['points'],
+                        labels=prompt['labels']
+                    )
 
             sequence = []
 
-            debug_dir = './debug-frames'
-            os.makedirs(debug_dir, exist_ok=True)
+            debug_dir = '/app/debug-frames'
+            #os.makedirs(debug_dir, exist_ok=True)
 
-            logger.info(f'Propagating in video from frame {last_frame_idx} to {last_frame_idx + frames_to_track}')
+            logger.debug(f'Propagating in video from frame {first_frame_idx} to {first_frame_idx + frames_to_track}')
             for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(
                 inference_state=inference_state,
-                start_frame_idx=last_frame_idx-first_frame_idx,
+                start_frame_idx=0,
                 max_frame_num_to_track=frames_to_track
             ):
                 real_frame_idx = out_frame_idx + first_frame_idx
@@ -356,7 +386,7 @@ class NewModel(LabelStudioMLBase):
                     mask = (out_mask_logits[i] > 0.0).cpu().numpy()
 
                     # to debug, save the mask as an image
-                    # self.dump_image_with_mask(frames[out_frame_idx][1], mask, f'{debug_dir}/{out_frame_idx:05d}_{out_obj_id}.jpg', obj_id=out_obj_id, random_color=True)
+                    self.dump_image_with_mask(frames[out_frame_idx][1], mask, f'{debug_dir}/{out_frame_idx:05d}_{out_obj_id}.jpg', obj_id=out_obj_id, random_color=False)
 
                     bbox = self.convert_mask_to_bbox(mask)
                     if bbox:
@@ -374,9 +404,10 @@ class NewModel(LabelStudioMLBase):
                             'rotation': 0,
                             'time': out_frame_idx / fps
                         })
-                        logger.debug(f'sequence: {sequence}')
-
+                        #logger.debug(f'sequence: {sequence}')
+            self.dumped_images_to_video(debug_dir)
             context_result_sequence = context['result'][0]['value']['sequence']
+            logger.debug(f'context_result_sequence: {context_result_sequence}')
 
             prediction = PredictionValue(
                 result=[{

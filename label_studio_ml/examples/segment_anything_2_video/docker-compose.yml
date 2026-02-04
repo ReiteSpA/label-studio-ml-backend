@@ -50,3 +50,4 @@ services:
     volumes:
       - "./data/server:/data"
       - /media/disk/object_detection/datasets:/label-studio/files:rw
+      - ./debug-frames:/app/debug-frames
