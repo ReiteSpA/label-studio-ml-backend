@@ -1,0 +1,4 @@
+# RF-DETR object detection (https://github.com/roboflow/rf-detr)
+rfdetr
+# Pillow used for image loading and get_image_size
+Pillow>=9.0.0
